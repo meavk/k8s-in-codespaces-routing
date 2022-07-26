@@ -8,10 +8,12 @@ echo "$(date +'%Y-%m-%d %H:%M:%S')    on-create start" >> "$HOME/status"
 # clone repos
 git clone https://github.com/cse-labs/imdb-app /workspaces/imdb-app
 git clone https://github.com/microsoft/webvalidate /workspaces/webvalidate
+git clone https://github.com/meavk/imdb-ui /workspaces/imdb-ui
 
 # restore the repos
 dotnet restore /workspaces/webvalidate/src/webvalidate.sln
 dotnet restore /workspaces/imdb-app/src/imdb.csproj
+dotnet restore /workspaces/imdb-ui/src/Imdb.BlazorWasm/Imdb.BlazorWasm.csproj
 
 export REPO_BASE=$PWD
 export PATH="$PATH:$REPO_BASE/cli"
@@ -59,6 +61,10 @@ kic build webv
 
 echo "deploying k3d cluster"
 kic cluster deploy
+
+echo "installing traefik"
+helm repo add traefik https://containous.github.io/traefik-helm-chart
+helm install traefik traefik/traefik
 
 # only run apt upgrade on pre-build
 if [ "$CODESPACE_NAME" = "null" ]

@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: imdb
+  name: imdb-api
   namespace: imdb
   labels:
-    app.kubernetes.io/name: imdb
+    app.kubernetes.io/name: imdb-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: imdb
+      app: imdb-api
   template:
     metadata:
       labels:
-        app: imdb
+        app: imdb-api
     spec:
       containers:
         - name: app
@@ -59,15 +59,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: imdb
+  name: imdb-api
   namespace: imdb
 spec:
-  type: NodePort
   ports:
     - port: 8080
-      nodePort: 30080
       targetPort: http
       protocol: TCP
       name: http
   selector:
-    app: imdb
+    app: imdb-api

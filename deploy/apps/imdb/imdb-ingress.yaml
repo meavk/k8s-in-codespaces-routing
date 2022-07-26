@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: imdb-ingress
+  namespace: imdb
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: imdb-ui
+            port:
+              number: 9080
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: imdb-api
+            port:
+              number: 8080

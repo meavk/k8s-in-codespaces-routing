@@ -25,6 +25,9 @@ ports:
   - port: 32000:32000
     nodeFilters:
       - server[0]
+  - port: 8081:80
+    nodeFilters:
+      - loadbalancer
 
 options:
   k3d:

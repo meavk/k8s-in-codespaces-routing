@@ -27,7 +27,8 @@
 		30000,
 		30080,
 		31080,
-		32000
+		32000,
+		8081
 	],
 
 	// add labels
@@ -35,7 +36,8 @@
 		"30000": { "label": "Prometheus" },
 		"30080": { "label": "IMDb App" },
 		"31080": { "label": "Heartbeat" },
-		"32000": { "label": "Grafana" }
+		"32000": { "label": "Grafana" },
+		"8081": {"label": "Traefik ingress"}
 	},
 
 	// Install extensions
@@ -47,7 +49,7 @@
 		"gruntfuggly.todo-tree",
 		"mutantdino.resourcemonitor",
 		"humao.rest-client",
-		"timonwong.shellcheck",
+		"timonwong.shellcheck"
 	],
 
 	"waitFor": "postCreateCommand",
