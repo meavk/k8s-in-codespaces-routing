@@ -10,13 +10,9 @@ This repo is to demonstrate the use of Kubernetes in Codespaces in a production 
 
 > Refer to the original `Kubernetes in Codespaces` [repository](https://github.com/cse-labs/kubernetes-in-codespaces) to understand more about the setup and usage.
 
-## Onboarding another application
+## Creating a codespace and running IMDB App
 
-A repository created from Kubernetes in Codespaces template pulls a `dotnet` based application, *IMDB App*, that's pulled from [here](https://github.com/cse-labs/imdb-app). While starting the codespace, this application is built and hosted in a `k3d` cluster running in Codespaces.
-
-The following sections describe how a new application, which consumes one of the APIs in *IMDB App* can be onboarded into this setup.
-
-### Creating a codespace and running IMDB App
+When a repository is created from Kubernetes in Codespaces template, it pulls a `dotnet` based application, *IMDB App*, from [here](https://github.com/cse-labs/imdb-app). While starting the codespace, this application is built and hosted in a `k3d` cluster running in Codespaces.
 
 1. Use the template [here](https://github.com/cse-labs/kubernetes-in-codespaces) and create a Github repository.
 
@@ -28,9 +24,15 @@ The following sections describe how a new application, which consumes one of the
 
 5. Navigate to `/api/movies` and check if returns a list of movies.
 
-### Adding IMDB UI application
+## Onboarding other applications
 
-1. Modify `.devcontainer/on-create.sh` to clone `imdb-ui` and restore packages by adding following lines to respective sections.
+The following sections describe how another application can be added to this environment.
+
+The first scenario is talking about *IMDB UI*, which consumes one of the APIs in *IMDB App*. In this scenario, the other app is being developed in a separate repository.
+
+### Adding an application from another repository
+
+1. First step is to clone that repository to Kubernetes in Codespaces repositoy. This can be done by adding few lines of code to `.devcontainer/on-create.sh` to clone `imdb-ui` and restore packages.
 
     ```bash
     # clone repos
@@ -42,7 +44,7 @@ The following sections describe how a new application, which consumes one of the
     dotnet restore /workspaces/imdb-ui/src/Imdb.BlazorWasm/Imdb.BlazorWasm.csproj
     ```
 
-2. Modify `.devcontainer/post-create.sh` to update the repo
+2. You'd also need to keep it up to date. Modify `.devcontainer/post-create.sh` for this.
 
     ```bash
     # update the repos
@@ -50,10 +52,67 @@ The following sections describe how a new application, which consumes one of the
     git -C /workspaces/imdb-ui pull
     ```
 
-3. Add a new command to build and deploy IMDB UI by creating new file `imdb-ui` in `cli/.kic/commands/build` folder.
+3. Assuming that the new app is already dockerized, next step is to create a YAML file `imdb-ui.yaml` for IMDB UI `deployment` and `service` in `deploy/apps/imdb-ui/imdb-ui` folder. Note that the service lists on `node port` `30090`.
+
+   ```YAML
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: imdb-ui
+     namespace: imdb
+     labels:
+       app.kubernetes.io/name: imdb-ui
+   spec:
+     replicas: 1
+     selector:
+       matchLabels:
+         app: imdb-ui
+     template:
+       metadata:
+         labels:
+           app: imdb-ui
+       spec:
+         containers:
+           - name: app
+             image: k3d-registry.localhost:5500/imdb-ui:local
+             imagePullPolicy: Always
+
+             ports:
+               - name: http
+                 containerPort: 80
+                 protocol: TCP
+
+             resources:
+               limits:
+                 cpu: 1000m
+                 memory: 256Mi
+               requests:
+                 cpu: 200m
+                 memory: 64Mi
+
+   ---
+
+   apiVersion: v1
+   kind: Service
+   metadata:
+     name: imdb-ui
+     namespace: imdb
+   spec:
+     type: NodePort
+     ports:
+       - port: 9080
+         nodePort: 30090
+         targetPort: http
+         protocol: TCP
+         name: http
+     selector:
+       app: imdb-ui
+   ```
+
+4. The `kic` command line has `build` commands that's meat to build and deploy the apps. Add one to build and deploy IMDB UI by creating new file `imdb-ui` in `cli/.kic/commands/build` folder. It can be seen that it's mostly a copy paste of the same for `imdb`except for a few changes.
 
     ```bash
-        #!/bin/bash
+    #!/bin/bash
 
     #name: imdb-ui
     #short: Build and deploy the IMDb UI to the local cluster
@@ -79,7 +138,7 @@ The following sections describe how a new application, which consumes one of the
     kubectl wait pod -l app=imdb-ui -n imdb --for condition=ready --timeout=30s
     ```
 
-4. Add this command to `kic build` scripts list by adding following lines to  `root.yaml` in `cli/.kic` folder.
+5. This command needs to be added `kic build` scripts list by adding following lines to `root.yaml` in `cli/.kic` folder.
 
     ```yaml
     - name: imdb-ui
@@ -87,9 +146,41 @@ The following sections describe how a new application, which consumes one of the
       path: build/imdb-ui
     ```
 
-5. Configure `.devcontainer/on-create.sh`to invoke IMDB build command.
+6. Configure `.devcontainer/on-create.sh` to invoke IMDB build command, so that IMDB UI is built as the container starts up.
 
     ```bash
     echo "bilding IMDb UI"
     kic build imdb-ui
     ```
+
+7. Lastly, the app needs to be exposed to internet. Codespaces has something called port forwarding to exposes services that are running in Codespaces. In earlier step while creating a `service` for IMDB-UI, you might have noticed a `nodePort` being assigned. Since this is a `k3d` node, first step is to configure `k3d` to expose it. This can be done by adding a new entry to the `ports` section in `.devcontainer/k3d.yaml`.
+
+    ```yaml
+      - port: 30090:30090
+        nodeFilters:
+        - server[0]
+    ```
+
+8. Finally, enable port forwarding by adding port `30090` to respective sections in `.devcontainer/devcontainer.json`.
+
+    ```json
+      "forwardPorts": [
+        30000,
+        30080,
+        30090,
+        31080,
+        32000
+      ],
+      @@ -34,6 +35,7 @@
+      "portsAttributes": {
+        "30000": { "label": "Prometheus" },
+        "30080": { "label": "IMDb App" },
+        "30090": { "label": "IMDb UI" },
+        "31080": { "label": "Heartbeat" },
+        "32000": { "label": "Grafana" }
+      },
+    ```
+
+9. Rebuild codespace by using the command `Codespaces: Rebuild Container` from Command Palette (`Ctrl+Shift+P`) for the changes to take effect.
+
+10. Once the codespace is built, `Ports` section should show a new entry `IMDb UI (30090)`. Click on the link to browse the application.
