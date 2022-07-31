@@ -190,5 +190,6 @@ The first scenario is talking about *IMDB UI*, which consumes one of the APIs in
 
 10. Once the codespace is built and pods are running, `Ports` section should show a new entry `IMDb UI (30090)`. Click on the link to browse the application.
     > Use `kic pods` command or check creation logs as did earlier to verify pods, including `imdb-ui`, are running.
-    ![image](https://user-images.githubusercontent.com/32096756/182041592-0a739d94-281a-4060-b927-a9c44b47b0b0.png)
+    ![image](https://user-images.githubusercontent.com/32096756/182041672-e966aff4-331d-4fb9-83db-81466d97176b.png)
+
 
