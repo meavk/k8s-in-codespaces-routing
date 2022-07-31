@@ -28,7 +28,8 @@
 		30080,
 		31080,
 		32000,
-		30090
+		30090,
+		8081
 	],
 
 	// add labels
@@ -37,7 +38,8 @@
 		"30080": { "label": "IMDb App" },
 		"31080": { "label": "Heartbeat" },
 		"32000": { "label": "Grafana" },
-		"30090": { "label": "IMDb UI" }
+		"30090": { "label": "IMDb UI" },
+		"8081": { "label": "Traefik Ingress" }
 	},
 
 	// Install extensions

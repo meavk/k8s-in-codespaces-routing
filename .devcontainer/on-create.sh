@@ -66,6 +66,10 @@ kic build webv
 echo "deploying k3d cluster"
 kic cluster deploy
 
+echo "installing traefik"
+helm repo add traefik https://containous.github.io/traefik-helm-chart
+helm install traefik traefik/traefik
+
 # only run apt upgrade on pre-build
 if [ "$CODESPACE_NAME" = "null" ]
 then
