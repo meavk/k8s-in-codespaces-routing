@@ -27,7 +27,8 @@
 		30000,
 		30080,
 		31080,
-		32000
+		32000,
+		30090
 	],
 
 	// add labels
@@ -35,7 +36,8 @@
 		"30000": { "label": "Prometheus" },
 		"30080": { "label": "IMDb App" },
 		"31080": { "label": "Heartbeat" },
-		"32000": { "label": "Grafana" }
+		"32000": { "label": "Grafana" },
+		"30090": { "label": "IMDb UI" }
 	},
 
 	// Install extensions

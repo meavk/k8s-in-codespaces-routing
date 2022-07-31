@@ -18,3 +18,7 @@ commands:
     - name: webv
       short: Build WebValidate
       path: build/webv
+
+    - name: imdb-ui
+      short: Build the IMDb UI app
+      path: build/imdb-ui

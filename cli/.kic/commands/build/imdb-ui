@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#name: imdb-ui
+#short: Build and deploy the IMDb UI to the local cluster
+
+cd "$REPO_BASE" || exit
+
+# validate directories
+if [ ! -d /workspaces/imdb-ui ]; then echo "/workspaces/imdb-ui directory not found. Please clone the imdb-ui repo to /workspaces"; exit 1; fi
+if [ ! -d deploy/apps/imdb-ui ]; then echo "$REPO_BASE/deploy/apps/imdb-ui directory not found. Please cd to an appropriate directory"; exit 1; fi
+
+# delete webv and imdb
+kubectl delete -f deploy/apps/imdb-ui --ignore-not-found=true --wait=false
+
+# build and push the local image for imdb-ui
+docker build /workspaces/imdb-ui/src/Imdb.BlazorWasm -t k3d-registry.localhost:5500/imdb-ui:local
+docker push k3d-registry.localhost:5500/imdb-ui:local
+
+# wait for delete to finish
+kubectl wait pod -l app=imdb-ui -n imdb --for delete --timeout=30s
+
+# deploy local app and re-deploy webv
+kubectl apply -f deploy/apps/imdb-ui
+kubectl wait pod -l app=imdb-ui -n imdb --for condition=ready --timeout=30s

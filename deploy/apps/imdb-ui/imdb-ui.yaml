@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imdb-ui
+  namespace: imdb
+  labels:
+    app.kubernetes.io/name: imdb-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imdb-ui
+  template:
+    metadata:
+      labels:
+        app: imdb-ui
+    spec:
+      containers:
+        - name: app
+          image: k3d-registry.localhost:5500/imdb-ui:local
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+            requests:
+              cpu: 200m
+              memory: 64Mi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: imdb-ui
+  namespace: imdb
+spec:
+  type: NodePort
+  ports:
+    - port: 9080
+      nodePort: 30090
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: imdb-ui

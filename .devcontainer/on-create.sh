@@ -8,10 +8,12 @@ echo "$(date +'%Y-%m-%d %H:%M:%S')    on-create start" >> "$HOME/status"
 # clone repos
 git clone https://github.com/cse-labs/imdb-app /workspaces/imdb-app
 git clone https://github.com/microsoft/webvalidate /workspaces/webvalidate
+git clone https://github.com/meavk/imdb-ui /workspaces/imdb-ui
 
 # restore the repos
 dotnet restore /workspaces/webvalidate/src/webvalidate.sln
 dotnet restore /workspaces/imdb-app/src/imdb.csproj
+dotnet restore /workspaces/imdb-ui/src/Imdb.BlazorWasm/Imdb.BlazorWasm.csproj
 
 export REPO_BASE=$PWD
 export PATH="$PATH:$REPO_BASE/cli"
@@ -52,6 +54,10 @@ kic cluster rebuild
 
 echo "bilding IMDb"
 kic build imdb
+
+echo "building IMDb UI"
+chmod +x /workspaces/k8s-in-codespaces-routing/cli/.kic/commands/build/imdb-ui
+kic build imdb-ui
 
 echo "building WebValidate"
 sed -i "s/RUN dotnet test//g" /workspaces/webvalidate/Dockerfile
