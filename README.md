@@ -6,412 +6,307 @@
 
 ## Overview
 
-This is a template that will setup a Kubernetes developer cluster using `k3d` in a `GitHub Codespace`
+This repo is to demonstrate the use of Kubernetes in Codespaces in a production-like scenario where an `ingress` is set up for routing.
+
+> Refer to the original `Kubernetes in Codespaces` [repository](https://github.com/cse-labs/kubernetes-in-codespaces) to understand more about the setup and usage.
+
+## Creating a codespace and running IMDB App
+
+When a repository is created from Kubernetes in Codespaces template, it pulls a `dotnet` based application, *IMDB App*, from [here](https://github.com/cse-labs/imdb-app). While starting the codespace, this application is built and hosted in a `k3d` cluster running in Codespaces.
+
+1. Use the template [here](https://github.com/cse-labs/kubernetes-in-codespaces) and create a Github repository.
+
+2. Create a codespace on the `main` branch or a new branch from `main`.
+
+3. Once the codespace is created and configured, the IMDB App should be running. Check this either in the container creation logs or by running `kic pods` from a `zsh` terminal.
+
+   > Wait for `onCreate`, `postCreate` and `postStart` commands to finish before checking.
+
+4. Make sure that the IMDB App is running in Codespace by navigating to the nodeport exposed through Codespaces port `30080`. Swagger documentation should be visible on the homepage.
+    ![image](https://user-images.githubusercontent.com/32096756/182039350-a84c910d-92ca-44e2-82c5-e2c9630202fd.png)
 
-We use this for `inner-loop` Kubernetes development. Note that it is not appropriate for production use but is a great `Developer Experience`. Feedback calls the approach `game-changing` - we hope you agree!
+5. Navigate to `/api/movies` and check if returns a list of movies.
 
-For ideas, feature requests, and discussions, please use GitHub discussions so we can collaborate and follow up.
+## Onboarding other applications
 
-This Codespace is tested with `zsh` and `oh-my-zsh`.
+The following sections describe how another application can be added to this environment.
 
-You can connect to the Codespace with a local version of VS Code.
+The first scenario is talking about *IMDB UI*, which consumes one of the APIs in *IMDB App*. In this scenario, the other app is being developed in a separate repository.
 
-Please experiment and add any issues to the GitHub Discussion.
+### Adding an application from another repository
 
-The motivation for creating and using Codespaces is highlighted by this [GitHub Blog Post](https://github.blog/2021-08-11-githubs-engineering-team-moved-codespaces/). "It eliminated the fragility and single-track model of local development environments, but it also gave us a powerful new point of leverage for improving GitHub’s developer experience."
+> All changes mentioned in the below steps are available as part of commit [Onboard meavk/imdb-ui application](https://github.com/meavk/k8s-in-codespaces-routing/commit/0bb05f8b86a2f3b0f9b3bc0b3d7049eca89789c9) for reference.
 
-Cory Wilkerson, Senior Director of Engineering at GitHub, recorded a podcast where he shared the GitHub journey to [Codespaces](https://changelog.com/podcast/459)
+1. The first step is to clone that repository to Kubernetes in Codespaces repository. This can be done by adding a few lines of code to `.devcontainer/on-create.sh` to clone `imdb-ui` and restore packages.
 
-## Join the CSE-Labs GitHub Org
+    ```bash
+    # clone repos
+    # -- clone other repos --
+    git clone https://github.com/meavk/imdb-ui /workspaces/imdb-ui
 
-> You must be a member of the Microsoft OSS and CSE-Labs GitHub organizations
+    # restore the repos
+    # -- restore other projects --
+    dotnet restore /workspaces/imdb-ui/src/Imdb.BlazorWasm/Imdb.BlazorWasm.csproj
+    ```
 
-- If you can't open a Codespace in this repo, you need to join the GitHub org(s)
-  - Instructions for joining are [here](https://github.com/cse-labs/moss)
-- Return to this repo after joining the org(s)
+2. You'd also need to keep it up to date. Modify `.devcontainer/post-create.sh` for this.
 
-## Open with Codespaces
+    ```bash
+    # update the repos
+    # -- update other repos --
+    git -C /workspaces/imdb-ui pull
+    ```
 
-> You must be a member of the Microsoft OSS and CSE-Labs GitHub organizations
+3. As the new app is already dockerized, the next step is to create a YAML file `imdb-ui.yaml` for IMDB UI `deployment` and `service` in a new folder `deploy/apps/imdb-ui` for the app. Note that the service listens on `node port` `30090`.
 
-- Click the `Code` button on this repo
-- Click the `Codespaces` tab
-- Click `New Codespace`
-- Choose the `4 core` option
-
-![Create Codespace](./images/OpenWithCodespaces.jpg)
-
-## Stopping a Codespace
-
-- Codespaces will shutdown automatically after being idle for 30 minutes
-- To shutdown a codespace immediately
-  - Click `Codespaces` in the lower left of the browser window
-  - Choose `Stop Current Codespace` from the context menu
-
-- You can also rebuild the container that is running your Codespace
-  - Any changes in `/workspaces` will be retained
-  - Other directories will be reset
-  - Click `Codespaces` in the lower left of the browser window
-  - Choose `Rebuild Container` from the context menu
-  - Confirm your choice
-
-- To delete a Codespace
-  - <https://github.com/codespaces>
-  - Use the context menu to delete the Codespace
-  - Please delete your Codespace once you complete the lab
-    - Creating a new Codespace only takes about 45 seconds!
-
-## Checking the k3d Cluster
-
-- A k3d cluster is created as part of the Codespace setup
-  - `kic` is a small CLI that we use to simplify Kubernetes development
-
-  ```bash
-
-  # check the pods
-  kic pods
-
-  ```
-
-- Output from `kic pods` should resemble this
-
-  ```text
-
-  NAMESPACE     NAME                                      READY   STATUS              RESTARTS   AGE
-  kube-system   local-path-provisioner-5ff76fc89d-wfpjx   1/1     Running             0          48s
-  kube-system   coredns-7448499f4d-dnjzl                  1/1     Running             0          48s
-  kube-system   metrics-server-86cbb8457f-qlp8v           1/1     Running             0          48s
-  logging       fluentbit-f6c6d757b-mjh7r                 1/1     Running             0          32s
-  kube-system   helm-install-traefik-crd-zk5gr            0/1     Completed           0          48s
-  kube-system   helm-install-traefik-mbr2l                0/1     Completed           1          48s
-  heartbeat     heartbeat-65978f8f88-dw9fn                1/1     Running             0          32s
-  default       jumpbox                                   1/1     Running             0          32s
-  imdb          imdb-79d8c756b-2p465                      1/1     Running             0          33s
-  monitoring    grafana-5df456f89c-2r6cm                  1/1     Running             0          32s
-  kube-system   svclb-traefik-2ks5t                       2/2     Running             0          22s
-  kube-system   traefik-97b44b794-txs9h                   1/1     Running             0          22s
-  heartbeat     webv-heartbeat-776cbf6fbf-jvk5x           1/1     Running             0          32s
-  imdb          webv-796c76d69d-5ghnq                     1/1     Running             0          4s
-  monitoring    prometheus-deployment-5c57d9b77d-tdtn2    1/1     Running             0          32s
-
-  ```
-
-![Running Codespace](./images/RunningCodespace.png)
-
-## Validate Deployment
-
-- If you get an error, just run the command again - it will clear once the services are ready
-
-```bash
-
-# check endpoints
-kic check all
-
-```
-
-### Validating endpoints
-
-Open [curl.http](./curl.http)
-
-> [curl.http](./curl.http) is used in conjuction with the Visual Studio Code [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension.
->
-> When you open [curl.http](./curl.http), you should see a clickable `Send Request` text above each of the URLs
-
-![REST Client example](./images/RESTClient.png)
-
-Clicking on `Send Request` should open a new panel in Visual Studio Code with the response from that request like so:
-
-![REST Client example response](./images/RESTClientResponse.png)
-
-## Jump Box
-
-A `jump box` pod is created so that you can execute commands `in the cluster`
-
-- use the `kj` alias
-  - example
-    - run `kj`
-      - Your terminal prompt will change
-      - From the `jumpbox` terminal
-      - Run `http imdb.imdb.svc.cluster.local:8080/version`
-      - `exit` back to the Codespaces terminal
-
-- use the `kje` alias
-  - example
-    - run http against the ClusterIP
-      - `kje http imdb.imdb.svc.cluster.local:8080/version`
-
-- Since the jumpbox is running `in` the cluster, we use the service name and port, not the NodePort
-  - A jumpbox is great for debugging network issues
-
-## NodePorts
-
-- Codespaces exposes `ports` to the local browser
-- We take advantage of this by exposing `NodePort` on most of our K8s services
-- Codespaces ports are setup in the `.devcontainer/devcontainer.json` file
-
-- Exposing the ports
-
-  ```json
-
-  // forward ports for the app
-  "forwardPorts": [
-    30000,
-    30080,
-    31080,
-    32000
-  ],
-
-  ```
-
-- Adding labels to the ports
-
-  ```json
-
-  // add labels
-  "portsAttributes": {
-    "30000": { "label": "Prometheus" },
-    "30080": { "label": "IMDb-app" },
-    "31080": { "label": "Heartbeat" },
-    "32000": { "label": "Grafana" },
-  },
-
-  ```
-
-## View IMDB App
-
-- Click on the `ports` tab of the terminal window
-- Click on the `open in browser icon` on the IMDb-App port (30080)
-- This will open the imdb-app home page (Swagger) in a new browser tab
-
-## View Heartbeat
-
-- Click on the `ports` tab of the terminal window
-- Click on the `open in browser icon` on the Heartbeat port (31080)
-- This will open the heartbeat home page (Swagger) in a new browser tab
-  - Note that you will see page `Under construction ...` as heartbeat does not have a UI
-  - Add `version` or `/heartbeat/17` to the end of the URL in the browser tab
-
-## Build and deploy a local version of imdb-app
-
-- We have a local Docker container registry running in the Codespace
-  - Run `docker ps` to see the running images
-- Build the WebAPI app from the local source code
-- Push to the local Docker registry
-- Deploy to local k3d cluster
-
-- Switch back to your Codespaces tab
-
-  ```bash
-
-  # from Codespaces terminal
-
-  # make and deploy a local version of imdb-app to k8s
-  kic build imdb
-
-  # check the app version
-  # the semver will have the current date and time
-  http localhost:30080/version
-
-  ```
-
-## Validate deployment with k9s
-
-> To exit K9s - `:q <enter>`
-
-- From the Codespace terminal window, start `k9s`
-  - Type `k9s` and press enter
-  - Press `0` to select all namespaces
-
-  - Use the arrow key to select `webv` pod for `heartbeat` then press the `l` key to view logs from the pod
-    - Notice that WebV is making a heartbeat request every 5 seconds
-    - To go back, press the `esc` key
-
-  - Use the arrow key to select `webv` pod for `imdb` then press the `l` key to view logs from the pod
-    - Notice that WebV is making 10 IMDb requests per second
-    - To go back, press the `esc` key
-
-  - Use the arrow key to select `jumpbox` then press `s` key to open a shell in the container
-    - Test the `IMDb-App` service from within the cluster by executing
-
-      ```bash
-
-      # httpie is a "pretty" version of curl
-      # test the webv-imdb service endpoint using local DNS
-      http webv.imdb.svc.cluster.local:8080/metrics
-
-      ```
-
-      - `exit <enter>`
-  - To view other resources - press `shift + :` followed by the deployment type (e.g. `secret`, `services`, `deployment`, etc).
-
-![k9s](./images/k9s.png)
-
-## View Fluent Bit Logs
-
-> Fluent Bit is set to forward logs to stdout for debugging
->
-> Fluent Bit can be configured to forward to different services including Grafana Cloud or Azure Log Analytics
->
-> Fluent Bit is also installed in the Codespace to simplify debugging new configurations. Run `fluent-bit --help` for more details.
-
-- Start `k9s` from the Codespace terminal (if it's not running from previous step)
-- Press `0` to show all `namespaces`
-- Select `fluentbit` pod and press `enter`
-- Press `enter` again to see the logs
-- Press `s` to Toggle AutoScroll
-- Press `w` to Toggle Wrap
-- Review logs that will be sent to Grafana when configured
-
-> To exit K9s - `:q <enter>`
-
-## View Prometheus Dashboard
-
-- Click on the `ports` tab of the terminal window
-- Click on the `open in browser icon` on the Prometheus port (30000)
-- This will open Prometheus in a new browser tab
-
-- From the Prometheus tab
-  - Begin typing `ImdbAppDuration_bucket` in the `Expression` search
-  - Click `Execute`
-  - This will display the log table that Grafana uses for the charts
-
-## View Grafana Dashboard
-
-- Grafana login info
-  - admin
-  - cse-labs
-
-- Click on the `ports` tab of the terminal window
-  - Click on the `open in browser icon` on the Grafana port (32000)
-  - This will open Grafana in a new browser tab
-
-![Codespace Ports](./images/CodespacePorts.jpg)
-
-> `IMDb-App` dashboard is set as the default home dashboard to visualize constant load generated to the IMDB application.
-
-![Grafana](./images/imdb-requests-by-mode.png)
-
-### Explore Grafana Dashboards
-
-- Click on the dashboard folder `General` at the top (with four squares) to access the dashboard search. The dashboard search can also be opened by using the shortcut `F`.
-- The list will show all the dashboards configured in Grafana.
-- We configure two dashboards as part of the initial deployment:
-  - IMDb App
-  - Dotnet
-
-## Run integration and load tests
-
-```bash
-
-# from Codespaces terminal
-
-# run an integration test (will generate warnings in Grafana)
-kic test integration
-
-# run a 30 second load test
-kic test load
-
-```
-
-- Switch to the Grafana browser tab
-- The integration test generates 400 and 404 results by design
-- The requests metric will go from green to yellow to red as load increases
-  - It may skip yellow
-- As the test completes
-  - The metric will go back to green (10 req/sec)
-  - The request graph will return to normal
-
-![Load Test](./images/test-with-errors-and-load-test.png)
-
-## How Codespaces is built
-
-Codespaces extends the use of development containers by providing a remote hosting environment. A development container is a fully-featured development environment running in a Docker container.
-
-Developers can simply click on a button in GitHub to open a Codespace for the repo. Behind the scenes, GitHub Codespaces is:
-
-- Starting a VM
-- Shallow clone the repo in that VM. The shallow clone pulls the `devcontainer.json` onto the VM
-- Start the development container on the VM
-- Clone the repository in the development container
-- Connect to the remotely hosted development container via the browser or Visual Studio Code
-
-`.devcontainer` folder contains the following:
-
-- `devcontainer.json`: This configuration file determines the environment for new Codespaces created for the repository by defining a development container that can include frameworks, tools, extensions, and port forwarding. For more information about the settings and properties that you can set in a devcontainer.json, see [devcontainer.json reference](https://code.visualstudio.com/docs/remote/devcontainerjson-reference) in the Visual Studio Code documentation.
-
-- `Dockerfile`: Dockerfile in `.devcontainer` defines a container image and installs software. You can use an existing base image by using the `FROM` instruction. For more information on using a Dockerfile in a dev container, see [Create a development container](https://code.visualstudio.com/docs/remote/create-dev-container#_dockerfile) in the Visual Studio Code documentation.
-
-- `Bash scripts`: We store lifecycle scripts under the `.devcontainer` folder. They are the hooks that allow you to run commands at different points in the development container lifecycle which include:
-  - onCreateCommand - Run when creating the container
-  - postCreateCommand - Run after the container is created
-  - postStartCommand - Run every time the container starts
-
-  For more information on using Lifecycle scripts, see [Codespaces lifecycle scripts](https://code.visualstudio.com/docs/remote/devcontainerjson-reference#_lifecycle-scripts).
-
-  > Note: Provide executable permissions to scripts using: `chmod+ x`.
-
-## Next Steps
-
-> Explore your Kubernetes in Codespaces cluster
-
-- kic CLI
-- K9s
-- kubectl
-- Docker
-
-If you break your cluster, just rebuild it using
-
-```bash
-
-kic cluster rebuild
-
-```
-
-## FAQ
-
-- Why don't we use helm to deploy Kubernetes manifests?
-  - The target audience for this repository is app developers so we chose simplicity for the Developer Experience.
-  - In our daily work, we use Helm for deployments and it is installed in the `Codespace` should you want to use it.
-- Why `k3d` instead of `Kind`?
-  - We love kind! Most of our code will run unchanged in kind (except the cluster commands)
-  - We had to choose one or the other as we don't have the resources to validate both
-  - We chose k3d for these main reasons
-    - Smaller memory footprint
-    - Faster startup time
-    - Secure by default
-      - K3s supports the [CIS Kubernetes Benchmark](https://rancher.com/docs/k3s/latest/en/security/hardening_guide/)
-    - Based on [K3s](https://rancher.com/docs/k3s/latest/en/) which is a certified Kubernetes distro
-      - Many customers run K3s on the edge as well as in CI-CD pipelines
-    - Rancher provides support - including 24x7 (for a fee)
-    - K3s has a vibrant community
-    - K3s is a CNCF sandbox project
-
-### Engineering Docs
-
-- Team Working [Agreement](.github/WorkingAgreement.md)
-- Team [Engineering Practices](.github/EngineeringPractices.md)
-- CSE Engineering Fundamentals [Playbook](https://github.com/Microsoft/code-with-engineering-playbook)
-
-## How to file issues and get help
-
-This project uses GitHub Issues to track bugs and feature requests. Please search the existing issues before filing new issues to avoid duplicates. For new issues, file your bug or feature request as a new issue.
-
-For help and questions about using this project, please open a GitHub issue.
-
-## Contributing
-
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit <https://cla.opensource.microsoft.com>
-
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services.
-
-Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-
-Any use of third-party trademarks or logos are subject to those third-party's policies.
+   ```YAML
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: imdb-ui
+     namespace: imdb
+     labels:
+       app.kubernetes.io/name: imdb-ui
+   spec:
+     replicas: 1
+     selector:
+       matchLabels:
+         app: imdb-ui
+     template:
+       metadata:
+         labels:
+           app: imdb-ui
+       spec:
+         containers:
+           - name: app
+             image: k3d-registry.localhost:5500/imdb-ui:local
+             imagePullPolicy: Always
+
+             ports:
+               - name: http
+                 containerPort: 80
+                 protocol: TCP
+
+             resources:
+               limits:
+                 cpu: 1000m
+                 memory: 256Mi
+               requests:
+                 cpu: 200m
+                 memory: 64Mi
+
+   ---
+
+   apiVersion: v1
+   kind: Service
+   metadata:
+     name: imdb-ui
+     namespace: imdb
+   spec:
+     type: NodePort
+     ports:
+       - port: 9080
+         nodePort: 30090
+         targetPort: http
+         protocol: TCP
+         name: http
+     selector:
+       app: imdb-ui
+   ```
+
+4. The `kic` CLI has `build` commands for building and deploying the apps. Add one to build and deploy IMDB UI by creating a new file `imdb-ui` in `cli/.kic/commands/build` folder. It can be seen that it's mostly a copy-paste of the same for `imdb` except for a few changes.
+
+    ```bash
+    #!/bin/bash
+
+    #name: imdb-ui
+    #short: Build and deploy the IMDb UI to the local cluster
+
+    cd "$REPO_BASE" || exit
+
+    # validate directories
+    if [ ! -d /workspaces/imdb-ui ]; then echo "/workspaces/imdb-ui directory not found. Please clone the imdb-ui repo to /workspaces"; exit 1; fi
+    if [ ! -d deploy/apps/imdb-ui ]; then echo "$REPO_BASE/deploy/apps/imdb-ui directory not found. Please cd to an appropriate directory"; exit 1; fi
+
+    # delete webv and imdb
+    kubectl delete -f deploy/apps/imdb-ui --ignore-not-found=true --wait=false
+
+    # build and push the local image for imdb-ui
+    docker build /workspaces/imdb-ui/src/Imdb.BlazorWasm -t k3d-registry.localhost:5500/imdb-ui:local
+    docker push k3d-registry.localhost:5500/imdb-ui:local
+
+    # wait for delete to finish
+    kubectl wait pod -l app=imdb-ui -n imdb --for delete --timeout=30s
+
+    # deploy local app and re-deploy webv
+    kubectl apply -f deploy/apps/imdb-ui
+    kubectl wait pod -l app=imdb-ui -n imdb --for condition=ready --timeout=30s
+    ```
+
+5. This command needs to be added `kic build` scripts list by adding the following lines to `root.yaml` in `cli/.kic` folder.
+
+    ```yaml
+    - name: imdb-ui
+      short: Build the IMDb UI app
+      path: build/imdb-ui
+    ```
+
+6. Add the following lines to `.devcontainer/on-create.sh`, right after `kic build imdb`, to invoke `imdb-ui` build command so that IMDB UI is built as the container gets created.
+
+    ```bash
+    echo "building IMDb UI"
+    chmod +x /workspaces/k8s-in-codespaces-routing/cli/.kic/commands/build/imdb-ui
+    kic build imdb-ui
+    ```
+
+7. The app needs to be exposed to the internet. Codespaces has port-forwarding to expose services that are running in Codespaces. In an earlier step, while creating a `service` for IMDB-UI, you might have noticed a `nodePort` being assigned. Since this is a `k3d` node, first step is to configure `k3d` to expose it. This can be done by adding a new entry to the `ports` section in `.devcontainer/k3d.yaml`.
+
+    ```yaml
+      - port: 30090:30090
+        nodeFilters:
+         - server[0]
+    ```
+
+8. Lastly, enable port forwarding by adding port `30090` to respective sections in `.devcontainer/devcontainer.json`.
+
+    ```json
+      "forwardPorts": [
+        30000,
+        30080,
+        30090,
+        31080,
+        32000
+      ],
+      "portsAttributes": {
+        "30000": { "label": "Prometheus" },
+        "30080": { "label": "IMDb App" },
+        "30090": { "label": "IMDb UI" },
+        "31080": { "label": "Heartbeat" },
+        "32000": { "label": "Grafana" }
+      },
+    ```
+
+9. Rebuild codespace by using the command `Codespaces: Rebuild Container` from Command Palette (`Ctrl+Shift+P`) for the changes to take effect.
+
+11. Once the codespace is built and pods are running, `Ports` section should show a new entry `IMDb UI (30090)`. Click on the link to browse the application.
+    > Use `kic pods` command or check creation logs as did earlier to verify pods, including `imdb-ui`, are running.
+    
+    ![image](https://user-images.githubusercontent.com/32096756/182041728-5c70f99b-d125-441b-bd25-0b9c53971f3d.png)
+
+### About IMDB UI application
+
+The UI for IMDB onboarded in the previous section is a [Blazor WebAssembly](https://docs.microsoft.com/en-us/aspnet/core/blazor/?view=aspnetcore-6.0#blazor-webassembly) application that runs completely in the browser. Navigate to the 'Movies' tab to see a list of movies.
+![image](https://user-images.githubusercontent.com/32096756/182042339-c43dc404-6186-4513-bad1-365a05a98495.png)
+
+You might remember from the earlier step that the response from `/api/movies` endpoint had a large number of movies in the list. However, the app is displaying only 2 movies. 
+
+This is because the UI is showing a hardcoded list of movies as the request to `/api/movies` failed. 
+![image](https://user-images.githubusercontent.com/32096756/182042527-4870f387-6e4e-4518-bc44-589de1c5b334.png)
+
+And, application fetched a hard-coded list of movies from a `.json` file
+   ```CSharp
+        try
+        {
+            movies = await Http.GetFromJsonAsync<Movie[]>("api/movies");
+        }
+        catch (System.Exception)
+        {
+            movies = await Http.GetFromJsonAsync<Movie[]>("sample-data/movies.json");
+        }
+   ```
+   
+This is a possible real-world scenario. In the microservices world, subdomains and different paths on the same domain can be served by different applications. Kubernetes and other microservices frameworks provide such capabilities. It's only fair to expect Kubernetes in Codespaces also to provide such capability. The next section shows how Codespaces port-forwarding and a Kubernetes `ingress` can be leveraged to implement the same.
+
+## Routing applications through an `ingress`
+
+For codespaces, the `host` part of the URL will be dynamically generated by GitHub and it changes from Codespace to Codespace. For the scenario described in the previous section, requests to `/api/` should be routed to 'IMDB App' and the rest to 'IMDB UI`. Usually, this is easily doable by creating a [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) and adding respective rules. This alone wouldn't solve the problem here since the cluster is running on a virtual node inside Codespace. The ingress-managed loadbalancer is not directly bound to the Codespace host IP. This is where Codespaces' port-forwarding comes in handy. 
+
+> All changes mentioned in the below steps are available as part of commit [Configure routing through ingress.](https://github.com/meavk/k8s-in-codespaces-routing/commit/3494e5945b0cacd64663a144d51d82f5ed85fdbb) for reference.
+
+1. The first requirement for the solution is an ingress controller. `k3d` comes with [Traefik Ingress Controller](https://doc.traefik.io/traefik/providers/kubernetes-ingress/). Since Kubernetes in Codespaces has disabled this, a new ingress needs to be set up. Add the following code to `.devcontainer/on-create.sh` after `kic cluster deploy` to install the latest version of Traefik. 
+
+   > This sample uses Traefik. Any other ingress, [Nginx](https://docs.nginx.com/nginx-ingress-controller/) for example, would also work. Just have to configure the rest accordingly
+
+   ```bash
+   echo "installing traefik"
+   helm repo add traefik https://containous.github.io/traefik-helm-chart
+   helm install traefik traefik/traefik
+   ```
+
+2. Next add a port mapping to `ports` section in `.devcontainer/k3d.yaml` to map port `8081` to Traefik `loadbalancer` port.
+
+   ```yaml
+     - port: 8081:80
+       nodeFilters:
+         - loadbalancer
+   ```
+   
+   > The above configuration maps port `8081` from the host to port `80` on the container that matches the [nodefilter](https://k3d.io/v5.3.0/design/concepts/#nodefilters) `loadbalancer`. And it matches `traefik` LoadBalancer service.
+   >  ```bash
+   >  @meavk ➜ /workspaces/k8s-in-codespaces-routing (main) $ k get service traefik
+   >  NAME      TYPE           CLUSTER-IP    EXTERNAL-IP   PORT(S)                      AGE
+   >  traefik   LoadBalancer   10.43.161.1   172.18.0.2    80:31244/TCP,443:30201/TCP   5d5h
+   >  ```
+
+3. Add port-forwarding to `.devcontainer/devcontainer.json`.
+   
+   ```json
+   	// forward ports for the app
+      "forwardPorts": [
+         30000,
+         30080,
+         31080,
+         32000,
+         30090,
+         8081
+      ],
+
+      // add labels
+      "portsAttributes": {
+         "30000": { "label": "Prometheus" },
+         "30080": { "label": "IMDb App" },
+         "31080": { "label": "Heartbeat" },
+         "32000": { "label": "Grafana" },
+         "30090": { "label": "IMDb UI" },
+         "8081": { "label": "Traefik Ingress" }
+      },
+   ```
+   
+4. Lastly, to route the requests as described earlier, create `imdb-ingress.yaml` to create an ingress resource in a new folder `deploy/apps/ingress`.
+   
+   ```yaml
+   apiVersion: networking.k8s.io/v1
+   kind: Ingress
+   metadata:
+     name: imdb-ingress
+     namespace: imdb
+     annotations:
+       ingress.kubernetes.io/ssl-redirect: "false"
+   spec:
+     rules:
+     - http:
+         paths:
+         - path: /
+           pathType: Prefix
+           backend:
+             service:
+               name: imdb-ui
+               port:
+                 number: 9080
+         - path: /api
+           pathType: Prefix
+           backend:
+             service:
+               name: imdb
+               port:
+                 number: 8080
+   ```
+   
+5. Rebuild Codespace to apply the changes. 
+6. After the rebuild, once commands are run and the applications are up and running, navigate to 'Traefik Ingress' to load the UI. This time, the 'Movies' tab should load the full list of movies.
+
+   ![image](https://user-images.githubusercontent.com/32096756/182047099-03ba4666-db54-4946-9241-e0c095f4334d.png)
+   
+   ![image](https://user-images.githubusercontent.com/32096756/182047141-e53edf28-90b2-4c3c-b31a-459bbeee2dec.png)
+   
+   ![image](https://user-images.githubusercontent.com/32096756/182047187-4ed83a2f-3a3f-4aca-b136-e749bd27b798.png)
