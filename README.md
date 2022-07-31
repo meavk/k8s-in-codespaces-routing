@@ -35,7 +35,7 @@ The first scenario is talking about *IMDB UI*, which consumes one of the APIs in
 
 ### Adding an application from another repository
 
-> All changes mentioned in below steps are available in branch [external-app-onboarding](https://github.com/meavk/k8s-in-codespaces-routing/tree/external-app-onboarding) as part of commit []() for reference.
+> All changes mentioned in below steps are available in branch [external-app-onboarding](https://github.com/meavk/k8s-in-codespaces-routing/tree/external-app-onboarding) as part of commit [Onboard meavk/imdb-ui application](https://github.com/meavk/k8s-in-codespaces-routing/commit/0bb05f8b86a2f3b0f9b3bc0b3d7049eca89789c9) for reference.
 
 1. First step is to clone that repository to Kubernetes in Codespaces repositoy. This can be done by adding few lines of code to `.devcontainer/on-create.sh` to clone `imdb-ui` and restore packages.
 
